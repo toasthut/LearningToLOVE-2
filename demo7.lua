@@ -11,6 +11,15 @@ function Demo7:new()
 	}
 
 	self.coins = {}
+	self.score = 0
+	self.shake = {
+		timeLeft = 0,
+		DURATION = 0.5,
+		wait = 0,
+		WAIT_DURATION = 0.02,
+		offset = { x = 0, y = 0 },
+		RANGE = 15,
+	}
 
 	if love.filesystem.getInfo("save.dat") then
 		local file = love.filesystem.read("save.dat")
@@ -19,6 +28,8 @@ function Demo7:new()
 		self.player.x = data.player.x
 		self.player.y = data.player.y
 		self.player.size = data.player.size
+		self.player.speed = data.player.speed
+		self.score = data.score
 
 		for i, v in ipairs(data.coins) do
 			self.coins[i] = {
@@ -45,6 +56,7 @@ function Demo7:update(dt)
 	local x = self.player.x
 	local y = self.player.y
 	local speed = self.player.speed
+	local shake = self.shake
 
 	if love.keyboard.isDown("left") then
 		x = x - speed * dt
@@ -65,12 +77,43 @@ function Demo7:update(dt)
 		if self:checkCollision(self.player, self.coins[i]) then
 			table.remove(self.coins, i)
 			self.player.size = self.player.size + 1
+			self.player.speed = self.player.speed + 10
+			self.score = self.score + 1
+			shake.timeLeft = shake.DURATION
 		end
 	end
+
+	if shake.timeLeft > 0 then
+		shake.timeLeft = shake.timeLeft - dt
+		if shake.wait > 0 then
+			shake.wait = shake.wait - dt
+		else
+			shake.offset.x = love.math.random(-shake.RANGE, shake.RANGE)
+			shake.offset.y = love.math.random(-shake.RANGE, shake.RANGE)
+			shake.wait = shake.WAIT_DURATION
+		end
+	end
+
+	self.shake = shake
 end
 
 function Demo7:draw()
 	local player = self.player
+
+	-- Draw game objects
+	love.graphics.push()
+	local camx = -player.x + love.graphics.getWidth() / 2
+	local camy = -player.y + love.graphics.getHeight() / 2
+	love.graphics.translate(camx, camy)
+
+	local shake = self.shake
+	if shake.timeLeft > 0 then
+		local shakex = shake.offset.x * (shake.timeLeft ^ 2)
+		local shakey = shake.offset.y * (shake.timeLeft ^ 2)
+		love.graphics.translate(shakex, shakey)
+		-- love.graphics.translate(shake.offset.x, shake.offset.y)
+	end
+
 	love.graphics.circle("line", player.x, player.y, player.size)
 	love.graphics.draw(
 		player.image,
@@ -87,9 +130,10 @@ function Demo7:draw()
 		love.graphics.circle("line", v.x, v.y, v.size)
 		love.graphics.draw(v.image, v.x, v.y, 0, 1, 1, v.image:getWidth() / 2, v.image:getHeight() / 2)
 	end
+	love.graphics.pop()
 
+	-- Draw UI
 	love.graphics.print("F1 to save, F2 to reset.", 10, 10)
-
 	if #self.coins == 0 then
 		love.graphics.setNewFont(24)
 		local text = "great work soldier"
@@ -105,6 +149,7 @@ function Demo7:draw()
 		)
 		love.graphics.setNewFont()
 	end
+	love.graphics.print("score: " .. self.score, 10, 30)
 end
 
 function Demo7:keypressed(key)
@@ -117,7 +162,7 @@ function Demo7:keypressed(key)
 		self:saveGame()
 	elseif key == "f2" then
 		love.filesystem.remove("save.dat")
-		self = self:new()
+		self:new()
 	end
 end
 
@@ -134,17 +179,21 @@ function Demo7:saveGame()
 	local data = {}
 	local player = self.player
 	local coins = self.coins
+	local score = self.score
 
 	data.player = {
 		x = player.x,
 		y = player.y,
 		size = player.size,
+		speed = player.speed,
 	}
 
 	data.coins = {}
 	for i, v in ipairs(coins) do
 		data.coins[i] = { x = v.x, y = v.y }
 	end
+
+	data.score = score
 
 	local serialized = lume.serialize(data)
 	love.filesystem.write("save.dat", serialized)

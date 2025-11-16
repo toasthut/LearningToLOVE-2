@@ -43,12 +43,19 @@ function Demo6:new()
 		tx = 2,
 		ty = 2,
 	}
+
+	local song = love.audio.newSource("audio/machine.ogg", "stream")
+	song:setVolume(0.45)
+	song:setLooping(true)
+	song:play()
+
+	self.sfx = love.audio.newSource("audio/fart-trim.ogg", "static")
 end
 
 function Demo6:update(dt) end
 
 function Demo6:draw()
-	love.graphics.print("Arrow keys to move.", 10, 10)
+	love.graphics.print("Arrow keys to move, Z to attack.", 10, 10)
 	local tileset = self.tileset
 	for i, row in ipairs(self.tilemap) do
 		for j, tile in ipairs(row) do
@@ -79,6 +86,11 @@ function Demo6:keypressed(key)
 	if self:isEmpty(x, y) then
 		self.player.tx = x
 		self.player.ty = y
+	end
+
+	if key == "z" then
+		local sfx = self.sfx:clone()
+		sfx:play()
 	end
 end
 
